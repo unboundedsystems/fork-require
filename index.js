@@ -23,7 +23,10 @@ function getProcessArgs() {
  * @param {Error} [source]          An error object that has the stack needed to fix the process stack
  */
 function handleResponse(process, resolve, reject, source)  {
-    process.once('message', message => {
+    const handler = message => {
+        if (message.forkRequireMessage !== true) return;
+        process.removeListener("message", handler);
+
         if (message.error && !message.failed) {
             let error = new Error(message.error);
             error.stack = fixStack(message.stack, source);
@@ -36,7 +39,8 @@ function handleResponse(process, resolve, reject, source)  {
         if (resolve && message.response) {
             resolve(message.response);
         }
-    });
+    };
+    process.on("message", handler);
 }
 
 /**
@@ -67,6 +71,7 @@ function fixStack(stack, source) {
  * @param {number} [retries=0]      Automatically set when retrying
  */
 function send(process, message, retries = 0) {
+    message = {...message, forkRequireMessage: true };
     try {
         process.send(message)
     } catch (err) {
@@ -106,13 +111,17 @@ module.exports = (file, options = {
         execPath: options.execPath
     });
     let source = new Error();
-    child.once('message', message => {
+    const handler = message => {
+        if (message.forkRequireMessage !== true) return;
+        child.removeListener("message", handler);
+
         if (message.failed) {
             let error = new Error(message.error);
             error.stack = fixStack(message.stack, options.fixStack && source);
             throw error;
         }
-    });
+    };
+    child.on("message", handler);
 
     let proxy = new Proxy(() => { this.process = process }, {
         apply: (_, __, args) => {
