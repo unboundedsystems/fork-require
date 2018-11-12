@@ -95,7 +95,8 @@ module.exports = (file, options = {}) => {
         cwd: process.cwd(),
         execArgv: process.execArgv,
         execPath: process.execPath,
-        fixStack: true
+        fixStack: true,
+        stdio: [ "inherit", "inherit", "inherit", "ipc" ]
     };
     options = { ...defaultOptions, ...options };
     let orig = Error.prepareStackTrace;
@@ -110,7 +111,8 @@ module.exports = (file, options = {}) => {
         env: options.env,
         cwd: options.cwd,
         execArgv: options.execArgv,
-        execPath: options.execPath
+        execPath: options.execPath,
+        stdio: options.stdio
     });
     let source = new Error();
     const handler = message => {
