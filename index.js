@@ -88,14 +88,16 @@ function send(process, message, retries = 0) {
  * @param {object} [options]    A set of options that will determine how the child process is forked.
  * @returns {Proxy<Module>}     The proxy module that will forward all calls to the child process module
  */
-module.exports = (file, options = {
-    args: getProcessArgs(),
-    env: process.env,
-    cwd: process.cwd(),
-    execArgv: process.execArgv,
-    execPath: process.execPath,
-    fixStack: true
-}) => {
+module.exports = (file, options = {}) => {
+    const defaultOptions = {
+        args: getProcessArgs(),
+        env: process.env,
+        cwd: process.cwd(),
+        execArgv: process.execArgv,
+        execPath: process.execPath,
+        fixStack: true
+    };
+    options = { ...defaultOptions, ...options };
     let orig = Error.prepareStackTrace;
     Error.prepareStackTrace = (_, stack) => stack;
     let stack = new Error().stack;
