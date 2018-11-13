@@ -23,7 +23,10 @@ function getProcessArgs() {
  * @param {Error} [source]          An error object that has the stack needed to fix the process stack
  */
 function handleResponse(process, resolve, reject, source)  {
-    process.once('message', message => {
+    const handler = message => {
+        if (message.forkRequireMessage !== true) return;
+        process.removeListener("message", handler);
+
         if (message.error && !message.failed) {
             let error = new Error(message.error);
             error.stack = fixStack(message.stack, source);
@@ -36,7 +39,8 @@ function handleResponse(process, resolve, reject, source)  {
         if (resolve && message.response) {
             resolve(message.response);
         }
-    });
+    };
+    process.on("message", handler);
 }
 
 /**
@@ -67,6 +71,7 @@ function fixStack(stack, source) {
  * @param {number} [retries=0]      Automatically set when retrying
  */
 function send(process, message, retries = 0) {
+    message = {...message, forkRequireMessage: true };
     try {
         process.send(message)
     } catch (err) {
@@ -83,14 +88,17 @@ function send(process, message, retries = 0) {
  * @param {object} [options]    A set of options that will determine how the child process is forked.
  * @returns {Proxy<Module>}     The proxy module that will forward all calls to the child process module
  */
-module.exports = (file, options = {
-    args: getProcessArgs(),
-    env: process.env,
-    cwd: process.cwd(),
-    execArgv: process.execArgv,
-    execPath: process.execPath,
-    fixStack: true
-}) => {
+module.exports = (file, options = {}) => {
+    const defaultOptions = {
+        args: getProcessArgs(),
+        env: process.env,
+        cwd: process.cwd(),
+        execArgv: process.execArgv,
+        execPath: process.execPath,
+        fixStack: true,
+        stdio: [ "inherit", "inherit", "inherit", "ipc" ]
+    };
+    options = { ...defaultOptions, ...options };
     let orig = Error.prepareStackTrace;
     Error.prepareStackTrace = (_, stack) => stack;
     let stack = new Error().stack;
@@ -103,16 +111,21 @@ module.exports = (file, options = {
         env: options.env,
         cwd: options.cwd,
         execArgv: options.execArgv,
-        execPath: options.execPath
+        execPath: options.execPath,
+        stdio: options.stdio
     });
     let source = new Error();
-    child.once('message', message => {
+    const handler = message => {
+        if (message.forkRequireMessage !== true) return;
+        child.removeListener("message", handler);
+
         if (message.failed) {
             let error = new Error(message.error);
             error.stack = fixStack(message.stack, options.fixStack && source);
             throw error;
         }
-    });
+    };
+    child.on("message", handler);
 
     let proxy = new Proxy(() => { this.process = process }, {
         apply: (_, __, args) => {

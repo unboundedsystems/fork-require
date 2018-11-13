@@ -5,6 +5,7 @@ process.argv.splice(2, 1);
 
 
 function send(message, retries = 0) {
+    message = { ...message, forkRequireMessage: true };
     try {
         process.send(message)
     } catch (err) {
@@ -18,6 +19,7 @@ function send(message, retries = 0) {
 try {
     let forkedModule = require(file);
     process.on('message', async message => {
+        if (message.forkRequireMessage !== true) return;
         try {
             if (message.prop) {
                 if (!forkedModule[message.prop]) {
