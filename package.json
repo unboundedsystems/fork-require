@@ -1,5 +1,5 @@
 {
-  "name": "fork-require",
+  "name": "@usys/fork-require",
   "version": "1.0.9-unb1",
   "description": "Allows to \"require\" a file, while forking it into a child process.",
   "author": "Ravi Gairola <mallox@pyxzl.net>",
