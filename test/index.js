@@ -26,4 +26,28 @@ describe('fork', () => {
     fork('./nothing')
     //process.setUncaughtExceptionCaptureCallback(null);
   });
+
+  it('should throw an error on child exit', async () => {
+    const testModule = fork('./testmodule');
+    let err;
+    try {
+      await testModule.exit(2);
+    } catch (e) {
+      err = e;
+    }
+    expect(err).to.be.an('error');
+    expect(err.message).to.equal('Child process exited unexpectedly with code 2');
+  });
+
+  it('should throw an error on child signal', async () => {
+    const testModule = fork('./testmodule');
+    let err;
+    try {
+      await testModule.signal('SIGKILL');
+    } catch (e) {
+      err = e;
+    }
+    expect(err).to.be.an('error');
+    expect(err.message).to.equal('Child process exited unexpectedly on signal SIGKILL');
+  });
 });

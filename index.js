@@ -17,15 +17,21 @@ function getProcessArgs() {
 
 /**
  * Handles the response of a child and calls the right promise resolution if given
- * @param {ChildProcess} process    The child process on which to listen for the message
+ * @param {cp.ChildProcess} process    The child process on which to listen for the message
  * @param {function} [resolve]      The promise resolve function to call on success
  * @param {function} [reject]       The promise reject function to on failure
  * @param {Error} [source]          An error object that has the stack needed to fix the process stack
  */
 function handleResponse(process, resolve, reject, source)  {
+    const onExit = (code, signal) => {
+        const info = code != null ? 'with code ' + code : 'on signal ' + signal;
+        reject(Object.assign(new Error('Child process exited unexpectedly ' + info), { code, signal }));
+    };
+
     const handler = message => {
         if (message.forkRequireMessage !== true) return;
         process.removeListener("message", handler);
+        process.removeListener("exit", onExit);
 
         if (message.error && !message.failed) {
             let error = new Error(message.error);
@@ -41,6 +47,7 @@ function handleResponse(process, resolve, reject, source)  {
         }
     };
     process.on("message", handler);
+    process.on("exit", onExit);
 }
 
 /**
@@ -48,7 +55,7 @@ function handleResponse(process, resolve, reject, source)  {
  * of the stack that was caught in the process and replace it with the part of the stack that was called
  * in the parent function.
  * @param {string} stack
- * @param {string} source
+ * @param {Error} source
  * @returns {string}
  */
 function fixStack(stack, source) {
@@ -66,7 +73,7 @@ function fixStack(stack, source) {
 
 /**
  * Will try up to 3 times to send a message to the given process.
- * @param {ChildProcess} process    The process to send the message to
+ * @param {cp.ChildProcess} process    The process to send the message to
  * @param {object} message          The message to send
  * @param {number} [retries=0]      Automatically set when retrying
  */
